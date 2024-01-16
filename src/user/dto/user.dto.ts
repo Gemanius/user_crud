@@ -6,4 +6,6 @@ export class UserDto {
   familyName: string;
   role: RoleEnum;
   email: string;
+  createdAt: Date;
+  updatedAt: Date;
 }

@@ -11,34 +11,59 @@ import {
   Post,
   Param,
   Query,
+  BadRequestException,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UserDto } from './dto/user.dto';
+import { RoleEnum } from './enum/role.enum';
 
-@Controller()
+@Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
-
-  @Get('/:role/:page/:size')
-  async getAllUser(
-    @Param('page') page: string,
-    @Param('size') size: string,
-    @Param('role') role: string,
-  ) {
-    return this.userService.getAllUser(page, size, role);
+  checkRoleType(role: string) {
+    if (
+      role != RoleEnum.ADMIN &&
+      role != RoleEnum.GUEST &&
+      role != RoleEnum.MEMBER
+    )
+      throw new BadRequestException();
   }
-  @Get('/userId')
-  async getUserById() {}
+  checkFieldsToNotBeNull(user: Partial<UserDto>) {
+    const { email, name, familyName, role } = user;
+    if (!email || !name || !familyName || !role)
+      throw new BadRequestException();
+    this.checkRoleType(role);
+  }
+
+  @Get('/:page/:size')
+  getAllUser(
+    @Param('page') page: number,
+    @Param('size') size: number,
+    @Query('role') role?: string,
+  ) {
+    if (!page || !size) throw new BadRequestException();
+    if (role) this.checkRoleType(role);
+    return this.userService.getAllUser(+page, +size, role);
+  }
+  @Get('/:userId')
+  getUserById(@Param('userId') userId: string) {
+    if (!userId) throw new BadRequestException();
+    return this.userService.getUserById(userId);
+  }
   @Post('/')
-  insertUser(@Body() user: UserDto) {
+  insertUser(@Body() user: Omit<UserDto, 'id'>) {
+    this.checkFieldsToNotBeNull(user);
     return this.userService.insertUser(user);
   }
   @Put('/')
-  async updateUser(@Body() user: UserDto) {
+  updateUser(@Body() user: UserDto) {
+    const { createdAt, updatedAt, ...userDetails } = user;
+    this.checkFieldsToNotBeNull(userDetails);
     return this.userService.updateUser(user);
   }
   @Delete('/:userId')
-  async deleteUser(@Param('userId') userId: string) {
+  deleteUser(@Param('userId') userId: string) {
+    if (!userId) throw new BadRequestException();
     return this.userService.deleteUser(userId);
   }
 }
